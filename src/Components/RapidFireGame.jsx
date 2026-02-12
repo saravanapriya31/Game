@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "../App.css"
 const questionsData = [
   { question: "The Earth is flat.", answer: false },
-  { question: "React is a JavaScript library.", answer: true },
+  { question: "React is an Javascript Frmework.", answer: true },
   { question: "The sun rises in the west.", answer: false },
   { question: "Tailwind CSS is a utility-first CSS framework.", answer: true },
   { question: "2 + 2 equals 5.", answer: false },
