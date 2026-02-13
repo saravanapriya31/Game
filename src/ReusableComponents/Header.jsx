@@ -14,6 +14,7 @@ export default function Header() {
         <Link to="/memory" className="text-white hover:text-yellow-200">
           Memory
         </Link>
+        <Link to="/Video" className="text-white hover:text-yellow-200">Video</Link>
       </nav>
     </header>
   );

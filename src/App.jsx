@@ -14,7 +14,7 @@ function App() {
         <Route path="/" element={<RapidFireGame />} />
         <Route path="/pathfinding" element={<PathfindingGame />} />
         <Route path="/memory" element={<VisualMemory />} />
-        <Route path="/vedio" element={<Hls />} />
+        <Route path="/video" element={<Hls />} />
       </Routes>
     
     </BrowserRouter>
