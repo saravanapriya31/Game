@@ -1,6 +1,7 @@
+
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
-
+import VisualMemory from "../VisualMemory";
 
 const VideoPlayer = ({
   src = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
@@ -22,16 +23,14 @@ const VideoPlayer = ({
   showPlaybackSpeed = true,
   showPictureInPicture = true,
   enableKeyboardShortcuts = true,
-  persistKey = "video-player", // Unique key for localStorage
-  persistInterval = 5, // Save progress every 5 seconds
-  resumeThreshold = 5, // Show resume dialog if progress > 5 seconds
+  persistKey = "video-player",
+  persistInterval = 5,
+  resumeThreshold = 5,
+
+  // Updated puzzles configuration
   puzzles = [
-    {
-      time: 20, // seconds
-      question: "What is React?",
-      options: ["Library", "Framework"],
-      correctAnswer: 0,
-    },
+    { time: 10, level: 1 }, // First game at 10 seconds for testing - level 1
+    // Second game will be triggered 60 seconds after first game completes
   ],
   onPuzzleComplete,
 }) => {
@@ -39,6 +38,7 @@ const VideoPlayer = ({
   const hlsRef = useRef(null);
   const containerRef = useRef(null);
   const persistTimerRef = useRef(null);
+  const nextPuzzleTimerRef = useRef(null);
 
   // State management
   const [puzzleState, setPuzzleState] = useState(() => {
@@ -48,10 +48,12 @@ const VideoPlayer = ({
         attempts: 0,
         solved: false,
         timeToSolve: null,
+        completedLevels: [],
       };
     });
     return initialState;
   });
+  
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -81,7 +83,11 @@ const VideoPlayer = ({
   const [lastSavedTime, setLastSavedTime] = useState(0);
 
   const [activePuzzleIndex, setActivePuzzleIndex] = useState(null);
-  const puzzleStartTimeRef = useRef(null);
+  const [currentGameLevel, setCurrentGameLevel] = useState(1);
+  const [nextPuzzleTime, setNextPuzzleTime] = useState(null);
+  const [completedPuzzles, setCompletedPuzzles] = useState([]);
+  const [showLevelComplete, setShowLevelComplete] = useState(false);
+  const [lastCompletedLevel, setLastCompletedLevel] = useState(null);
 
   // Generate unique storage keys based on video src
   const getStorageKeys = useCallback(() => {
@@ -92,12 +98,19 @@ const VideoPlayer = ({
       muted: `${persistKey}-muted`,
       playbackRate: `${persistKey}-playbackRate`,
       quality: `${persistKey}-quality`,
+      completedPuzzles: `${persistKey}-${videoId}-completed`,
     };
   }, [src, persistKey]);
 
   // Load saved preferences
   useEffect(() => {
     const keys = getStorageKeys();
+
+    // Load saved completed puzzles
+    const savedCompleted = localStorage.getItem(keys.completedPuzzles);
+    if (savedCompleted) {
+      setCompletedPuzzles(JSON.parse(savedCompleted));
+    }
 
     // Load saved playback position
     const savedTime = localStorage.getItem(keys.time);
@@ -151,7 +164,8 @@ const VideoPlayer = ({
     if (currentQuality !== -1) {
       localStorage.setItem(keys.quality, currentQuality.toString());
     }
-  }, [volume, isMuted, playbackRate, currentQuality, getStorageKeys]);
+    localStorage.setItem(keys.completedPuzzles, JSON.stringify(completedPuzzles));
+  }, [volume, isMuted, playbackRate, currentQuality, completedPuzzles, getStorageKeys]);
 
   // Initialize HLS
   useEffect(() => {
@@ -222,6 +236,10 @@ const VideoPlayer = ({
       if (persistTimerRef.current) {
         clearInterval(persistTimerRef.current);
       }
+      // Clear next puzzle timer
+      if (nextPuzzleTimerRef.current) {
+        clearTimeout(nextPuzzleTimerRef.current);
+      }
     };
   }, [src, onReady, onError, currentQuality, volume, isMuted, playbackRate]);
 
@@ -281,6 +299,30 @@ const VideoPlayer = ({
     localStorage.removeItem(`${keys.time}-timestamp`);
   }, [getStorageKeys]);
 
+  // Schedule next puzzle
+  const scheduleNextPuzzle = useCallback((delayInSeconds, nextLevel) => {
+    // Clear any existing timer
+    if (nextPuzzleTimerRef.current) {
+      clearTimeout(nextPuzzleTimerRef.current);
+    }
+
+    // Show level complete message
+    setShowLevelComplete(true);
+    setLastCompletedLevel(nextLevel - 1);
+
+    // Schedule new puzzle
+    nextPuzzleTimerRef.current = setTimeout(() => {
+      setShowLevelComplete(false);
+      setCurrentGameLevel(nextLevel);
+      
+      // Trigger the next puzzle
+      if (videoRef.current) {
+        videoRef.current.pause();
+        setActivePuzzleIndex(0); // Use index 0 for all puzzles since we're dynamically creating them
+      }
+    }, delayInSeconds * 1000);
+  }, []);
+
   // Video event listeners
   useEffect(() => {
     const video = videoRef.current;
@@ -294,14 +336,12 @@ const VideoPlayer = ({
     const handlePause = () => {
       setIsPlaying(false);
       if (onPause) onPause(video);
-      // Save progress on pause
       saveProgress();
     };
 
     const handleEnded = () => {
       setIsPlaying(false);
       if (onEnded) onEnded(video);
-      // Clear saved progress when video ends
       clearSavedProgress();
     };
 
@@ -309,14 +349,18 @@ const VideoPlayer = ({
       const time = video.currentTime;
       setCurrentTime(time);
 
-      puzzles.forEach((puzzle, index) => {
-        const state = puzzleState[index];
-
-        if (!state.solved && time >= puzzle.time && time < puzzle.time + 0.5) {
-          video.pause(); // ⛔ pause video
-          setActivePuzzleIndex(index); // 🔥 show puzzle
-        }
-      });
+      // Check for first puzzle at specified time
+      if (puzzles.length > 0 && 
+          completedPuzzles.length === 0 && 
+          time >= puzzles[0].time && 
+          time < puzzles[0].time + 0.5 && 
+          activePuzzleIndex === null &&
+          !showLevelComplete) {
+        
+        video.pause();
+        setActivePuzzleIndex(0);
+        setCurrentGameLevel(puzzles[0].level);
+      }
 
       if (onTimeUpdate) onTimeUpdate(time, video.duration);
     };
@@ -344,7 +388,6 @@ const VideoPlayer = ({
     const handleWaiting = () => setIsLoading(true);
     const handleCanPlay = () => {
       setIsLoading(false);
-      // If no resume dialog and autoPlay, check if we should resume
       if (!showResumeDialog && autoPlay) {
         const savedTime = localStorage.getItem(getStorageKeys().time);
         if (savedTime && parseFloat(savedTime) > resumeThreshold) {
@@ -414,9 +457,13 @@ const VideoPlayer = ({
     autoPlay,
     getStorageKeys,
     resumeThreshold,
+    puzzles,
+    activePuzzleIndex,
+    completedPuzzles,
+    showLevelComplete,
   ]);
 
-  // Control handlers (keep your existing handlers)
+  // Control handlers
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
     if (video.paused) {
@@ -428,19 +475,16 @@ const VideoPlayer = ({
 
   const handleSeek = useCallback(
     (time) => {
-      const nextUnsolvedPuzzle = puzzles.find(
-        (p, i) => !puzzleState[i].solved && time > p.time,
-      );
-
-      if (nextUnsolvedPuzzle) {
-        return; // 🚫 block skipping
+      // Don't allow seeking past unsolved puzzles
+      if (completedPuzzles.length === 0 && time > puzzles[0]?.time) {
+        return; // Block skipping past first puzzle if not completed
       }
 
       videoRef.current.currentTime = time;
       setCurrentTime(time);
       setTimeout(saveProgress, 100);
     },
-    [puzzles, puzzleState, saveProgress],
+    [puzzles, completedPuzzles, saveProgress],
   );
 
   const handleVolumeChange = useCallback((newVolume) => {
@@ -490,6 +534,36 @@ const VideoPlayer = ({
     [saveProgress],
   );
 
+  // Updated handlePuzzleComplete to auto-play video
+  const handlePuzzleComplete = (completedLevel, autoPlayVideo = true) => {
+    if (activePuzzleIndex === null) return;
+
+    // Add to completed puzzles
+    setCompletedPuzzles(prev => [...prev, completedLevel]);
+
+    // Resume video automatically
+    setActivePuzzleIndex(null);
+    
+    if (autoPlayVideo && videoRef.current) {
+      videoRef.current.play().catch(console.error);
+    }
+
+    // Schedule next puzzle after 60 seconds
+    const nextLevel = completedLevel + 1;
+    if (nextLevel <= 5) { // Let's do up to level 5
+      scheduleNextPuzzle(60, nextLevel); // 60 seconds delay
+    }
+
+    // Optional callback
+    if (typeof onPuzzleComplete === "function") {
+      onPuzzleComplete({ 
+        level: completedLevel,
+        nextLevelDelay: 60,
+        autoPlayed: autoPlayVideo
+      });
+    }
+  };
+
   // Format time helper
   const formatTime = (seconds) => {
     if (isNaN(seconds)) return "0:00";
@@ -503,83 +577,11 @@ const VideoPlayer = ({
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  // const handlePuzzleAnswer = (selectedIndex) => {
-  //   const puzzle = puzzles[activePuzzleIndex];
-  //   const isCorrect = selectedIndex === puzzle.correctAnswer;
-
-  //   setPuzzleState((prev) => {
-  //     const updated = { ...prev };
-
-  //     updated[activePuzzleIndex] = {
-  //       ...updated[activePuzzleIndex],
-  //       attempts: updated[activePuzzleIndex].attempts + 1,
-  //       solved: isCorrect,
-  //       timeToSolve: isCorrect
-  //         ? Math.round(videoRef.current.currentTime - puzzle.time)
-  //         : null,
-  //     };
-
-  //     return updated;
-  //   });
-
-  //   if (isCorrect) {
-  //     if (onPuzzleComplete) {
-  //       onPuzzleComplete({
-  //         puzzleIndex: activePuzzleIndex,
-  //         attempts: puzzleState[activePuzzleIndex].attempts + 1,
-  //         timeToSolve: Math.round(videoRef.current.currentTime - puzzle.time),
-  //       });
-  //     }
-
-  //     setActivePuzzleIndex(null); // ❌ hide puzzle
-  //     videoRef.current.play(); // ▶ resume video
-  //   }
-  // };
-
-  const handlePuzzleAnswer = (selectedIndex) => {
-  if (activePuzzleIndex === null) return;
-
-  const puzzle = puzzles[activePuzzleIndex];
-  const isCorrect = selectedIndex === puzzle.correctAnswer;
-
-  setPuzzleState((prev) => {
-    const updated = { ...prev };
-
-    const newAttempts = prev[activePuzzleIndex].attempts + 1;
-
-    updated[activePuzzleIndex] = {
-      ...prev[activePuzzleIndex],
-      attempts: newAttempts,
-      solved: isCorrect,
-      timeToSolve: isCorrect
-        ? Math.round(videoRef.current.currentTime - puzzle.time)
-        : null,
-    };
-
-    // ✅ Fire callback safely inside state update
-    if (isCorrect && typeof onPuzzleComplete === "function") {
-      onPuzzleComplete({
-        puzzleIndex: activePuzzleIndex,
-        attempts: newAttempts,
-        timeToSolve: updated[activePuzzleIndex].timeToSolve,
-      });
-    }
-
-    return updated;
-  });
-
-  if (isCorrect) {
-    setActivePuzzleIndex(null);
-    videoRef.current?.play();
-  }
-};
-
-
   return (
     <div
       ref={containerRef}
       className={`video-player-container ${className} ${isFullscreen ? "fullscreen" : ""}`}
-      style={{ width, height }}
+      style={{ width, height, position: 'relative' }}
     >
       <video
         ref={videoRef}
@@ -633,24 +635,37 @@ const VideoPlayer = ({
         </div>
       )}
 
-      {activePuzzleIndex !== null && (
-        <div className="puzzle-overlay">
-          <div className="puzzle-box">
-            <h3>{puzzles[activePuzzleIndex].question}</h3>
-
-            {puzzles[activePuzzleIndex].options.map((option, i) => (
-              <button
-                key={i}
-                onClick={() => handlePuzzleAnswer(i)}
-                className="puzzle-option"
-              >
-                {option}
-              </button>
-            ))}
+      {/* Level Complete Message */}
+      {showLevelComplete && (
+        <div className="level-complete-overlay">
+          <div className="level-complete-message">
+            <h2>🎉 LEVEL {lastCompletedLevel} COMPLETE! 🎉</h2>
+            <p>Next level in 60 seconds...</p>
+            <div className="countdown-timer">
+              <div className="timer-bar"></div>
+            </div>
           </div>
         </div>
       )}
 
+      {/* Next puzzle countdown indicator */}
+      {nextPuzzleTimerRef.current && !showLevelComplete && (
+        <div className="next-puzzle-indicator">
+          <span>🔔 Next Level in 60 seconds</span>
+        </div>
+      )}
+
+      {/* Puzzle Overlay with VisualMemory */}
+      {activePuzzleIndex !== null && (
+        <div className="puzzle-overlay">
+          <VisualMemory 
+            onComplete={handlePuzzleComplete} 
+            initialLevel={currentGameLevel}
+          />
+        </div>
+      )}
+
+      {/* Video Controls */}
       {showControls && (
         <div className="video-controls">
           <div className="progress-bar-container">
@@ -680,6 +695,27 @@ const VideoPlayer = ({
                   #666 ${(currentTime / (duration || 1)) * 100}%, #666 100%)`,
               }}
             />
+            
+            {/* Puzzle markers */}
+            {puzzles.map((puzzle, index) => (
+              !completedPuzzles.includes(puzzle.level) && (
+                <div
+                  key={index}
+                  className="puzzle-marker"
+                  style={{
+                    left: `${(puzzle.time / (duration || 1)) * 100}%`,
+                    position: 'absolute',
+                    top: '-20px',
+                    width: '4px',
+                    height: '20px',
+                    backgroundColor: completedPuzzles.includes(puzzle.level) ? '#4CAF50' : '#ff4444',
+                    cursor: 'pointer',
+                    zIndex: 10,
+                  }}
+                  title={`Puzzle at ${formatTime(puzzle.time)} - Level ${puzzle.level} ${completedPuzzles.includes(puzzle.level) ? '(Completed)' : ''}`}
+                />
+              )
+            ))}
           </div>
 
           <div className="controls-left">

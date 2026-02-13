@@ -2,7 +2,7 @@ import React, { useState } from "react";
 
 const SIZE = 7;
 
-// 🧩 sample puzzle (like your image)
+
 const initialGrid = [
   [0,0,0,0,0,0,0],
   [0,10,15,16,8,9,0],
@@ -39,10 +39,10 @@ export default function NumberPathPuzzle() {
 
     if (!isAdjacent(last.row, last.col, row, col)) return;
 
-    // next number OR empty
+
     if (value !== 0 && value !== currentNumber + 1) return;
 
-    // prevent reuse
+
     if (path.some(p => p.row === row && p.col === col)) return;
 
     setPath([...path, { row, col }]);
