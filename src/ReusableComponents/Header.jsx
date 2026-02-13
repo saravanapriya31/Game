@@ -3,12 +3,17 @@ import { Link } from "react-router-dom";
 
 export default function Header() {
   return (
-    <header className="bg-sky-500 text-white p-4 flex justify-between">
-      
+    <header className="bg-white text-white p-4 flex justify-between">
       <nav className="flex gap-6">
-        <Link to="/">Rapid Fire</Link>
-        <Link to="/pathfinding">Pathfinding</Link>
-        <Link to="/memory">Memory</Link>
+        <Link to="/" className="text-white hover:text-yellow-200">
+          Rapid Fire
+        </Link>
+        <Link to="/pathfinding" className="text-white hover:text-yellow-200">
+          Pathfinding
+        </Link>
+        <Link to="/memory" className="text-white hover:text-yellow-200">
+          Memory
+        </Link>
       </nav>
     </header>
   );

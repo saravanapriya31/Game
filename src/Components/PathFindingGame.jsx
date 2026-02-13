@@ -121,7 +121,7 @@ export default function App() {
 
       <button
         onClick={findPath}
-        className="mb-4 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+        className="mb-4 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 text-black"
       >
         Find Path
       </button>

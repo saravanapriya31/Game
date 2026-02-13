@@ -54,8 +54,8 @@ export default function RapidFireGame() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="bg-white shadow-2xl rounded-2xl p-8 w-full max-w-md text-center transition-all duration-300">
+    <div className="min-h-screen bg-blue-300 flex items-center justify-center p-4">
+      <div className="bg-yellow-500 shadow-2xl rounded-2xl p-8 w-full max-w-md text-center transition-all duration-300">
         <h1 className="text-3xl font-bold mb-4">⚡ Rapid Fire: True or False</h1>
 
         {!gameOver && (
@@ -71,13 +71,13 @@ export default function RapidFireGame() {
             <div className="flex gap-4 justify-center">
               <button
                 onClick={() => handleAnswer(true)}
-                className="px-6 py-2 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition"
+                className="px-6 py-2 rounded-xl  text-black font-semibold hover:bg-green-600 transition"
               >
                 True
               </button>
               <button
                 onClick={() => handleAnswer(false)}
-                className="px-6 py-2 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 transition"
+                className="px-6 py-2 rounded-xl bg-red-500 text-black font-semibold hover:bg-red-600 transition"
               >
                 False
               </button>
@@ -95,7 +95,7 @@ export default function RapidFireGame() {
             <p className="text-lg mb-6">Your Score: {score}</p>
             <button
               onClick={restartGame}
-              className="px-6 py-2 rounded-xl bg-blue-500 text-white font-semibold hover:bg-blue-600 transition"
+              className="px-6 py-2 rounded-xl bg-blue-500 text-black font-semibold hover:bg-blue-600 transition"
             >
               Play Again
             </button>
