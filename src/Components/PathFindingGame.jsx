@@ -1,160 +1,92 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
-const SIZE = 15;
+const SIZE = 7;
 
-export default function App() {
-  const [grid, setGrid] = useState([]);
+// 🧩 sample puzzle (like your image)
+const initialGrid = [
+  [0,0,0,0,0,0,0],
+  [0,10,15,16,8,9,0],
+  [0,11,0,0,0,4,0],
+  [0,14,0,0,0,3,0],
+  [0,13,0,0,0,5,0],
+  [0,12,7,1,2,6,0],
+  [0,0,0,0,0,0,0],
+];
 
-  useEffect(() => {
-    createGrid();
-  }, []);
+export default function NumberPathPuzzle() {
+  const [path, setPath] = useState([]);
+  const [currentNumber, setCurrentNumber] = useState(1);
+  const [isDrawing, setIsDrawing] = useState(false);
 
-  const createGrid = () => {
-    const newGrid = [];
-    for (let r = 0; r < SIZE; r++) {
-      const row = [];
-      for (let c = 0; c < SIZE; c++) {
-        row.push({
-          row: r,
-          col: c,
-          type: "empty",
-          visited: false,
-          previous: null,
-        });
-      }
-      newGrid.push(row);
-    }
-
-    newGrid[0][0].type = "start";
-    newGrid[SIZE - 1][SIZE - 1].type = "end";
-
-    setGrid(newGrid);
+  const isAdjacent = (r1, c1, r2, c2) => {
+    const dx = Math.abs(r1 - r2);
+    const dy = Math.abs(c1 - c2);
+    return dx + dy === 1;
   };
 
-  const toggleWall = (row, col) => {
-    const newGrid = [...grid];
-    const node = newGrid[row][col];
-
-    if (node.type === "start" || node.type === "end") return;
-
-    node.type = node.type === "wall" ? "empty" : "wall";
-    setGrid(newGrid);
+  const handleMouseDown = (row, col, value) => {
+    if (value === 1) {
+      setIsDrawing(true);
+      setPath([{ row, col }]);
+      setCurrentNumber(1);
+    }
   };
 
-  const findPath = () => {
-    const newGrid = grid.map(row =>
-      row.map(node => ({
-        ...node,
-        visited: false,
-        previous: null,
-        type:
-          node.type === "path" ? "empty" : node.type,
-      }))
-    );
+  const handleMouseEnter = (row, col, value) => {
+    if (!isDrawing) return;
 
-    const queue = [];
-    const start = newGrid[0][0];
-    const end = newGrid[SIZE - 1][SIZE - 1];
+    const last = path[path.length - 1];
 
-    queue.push(start);
+    if (!isAdjacent(last.row, last.col, row, col)) return;
 
-    while (queue.length > 0) {
-      const current = queue.shift();
-      current.visited = true;
+    // next number OR empty
+    if (value !== 0 && value !== currentNumber + 1) return;
 
-      if (current === end) break;
+    // prevent reuse
+    if (path.some(p => p.row === row && p.col === col)) return;
 
-      const neighbors = getNeighbors(current, newGrid);
+    setPath([...path, { row, col }]);
 
-      for (let neighbor of neighbors) {
-        if (!neighbor.visited && neighbor.type !== "wall") {
-          neighbor.visited = true;
-          neighbor.previous = current;
-          queue.push(neighbor);
-        }
-      }
+    if (value === currentNumber + 1) {
+      setCurrentNumber(currentNumber + 1);
     }
-
-    // Build shortest path
-    let current = end;
-    while (current.previous) {
-      if (current.type !== "end")
-        current.type = "path";
-      current = current.previous;
-    }
-
-    setGrid(newGrid);
   };
 
-  const getNeighbors = (node, grid) => {
-    const { row, col } = node;
-    const neighbors = [];
-
-    if (row > 0) neighbors.push(grid[row - 1][col]);
-    if (row < SIZE - 1) neighbors.push(grid[row + 1][col]);
-    if (col > 0) neighbors.push(grid[row][col - 1]);
-    if (col < SIZE - 1) neighbors.push(grid[row][col + 1]);
-
-    return neighbors;
+  const handleMouseUp = () => {
+    setIsDrawing(false);
   };
 
-  const getColor = (type) => {
-    switch (type) {
-      case "start":
-        return "bg-green-500";
-      case "end":
-        return "bg-red-500";
-      case "wall":
-        return "bg-gray-800";
-      case "path":
-        return "bg-yellow-400";
-      default:
-        return "bg-white";
-    }
+  const isInPath = (row, col) => {
+    return path.some(p => p.row === row && p.col === col);
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col items-center p-6 text-white">
-      <h1 className="text-2xl font-bold mb-4">
-        Easy Pathfinding Game
-      </h1>
-
-      <button
-        onClick={findPath}
-        className="mb-4 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 text-black"
-      >
-        Find Path
-      </button>
-
-      <button
-        onClick={createGrid}
-        className="mb-6 px-4 py-2 bg-yellow-500 text-black rounded hover:bg-yellow-400"
-      >
-        Reset
-      </button>
-
-      <div
-        className="grid"
-        style={{
-          gridTemplateColumns: `repeat(${SIZE}, 30px)`,
-        }}
-      >
-        {grid.map((row, r) =>
-          row.map((node, c) => (
+    <div
+      className="min-h-screen bg-gray-100 flex items-center justify-center"
+      onMouseUp={handleMouseUp}
+    >
+      <div className="grid grid-cols-7 gap-1 bg-white p-4 rounded-2xl">
+        {initialGrid.map((row, r) =>
+          row.map((cell, c) => (
             <div
               key={`${r}-${c}`}
-              onClick={() => toggleWall(r, c)}
-              className={`w-7 h-7 border border-gray-400 cursor-pointer ${getColor(
-                node.type
-              )}`}
-            />
+              onMouseDown={() => handleMouseDown(r, c, cell)}
+              onMouseEnter={() => handleMouseEnter(r, c, cell)}
+              className={`
+                w-12 h-12 flex items-center justify-center
+                border rounded-lg cursor-pointer
+                ${isInPath(r,c) ? "bg-orange-400" : "bg-gray-200"}
+              `}
+            >
+              {cell !== 0 && (
+                <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-sm font-bold">
+                  {cell}
+                </div>
+              )}
+            </div>
           ))
         )}
       </div>
-
-      <p className="mt-4 text-sm text-gray-300">
-        Click cells to create walls. Green → Start, Red → End.
-      </p>
     </div>
   );
 }
