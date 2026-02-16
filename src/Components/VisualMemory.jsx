@@ -85,7 +85,7 @@ export default function VisualMemory({ onComplete, initialLevel = 1 }) {
 
   return (
     <div className="w-full h-full bg-slate-900 text-white flex flex-col items-center justify-center p-4">
-      <h1 className="text-3xl font-bold mb-2">🧠 Visual Memory Game</h1>
+      <h1 className="text-3xl font-bold mb-2">Visual Memory Game</h1>
       
       {/* Level display - LARGE and prominent */}
       <div className="mb-2 text-center">
@@ -150,7 +150,6 @@ export default function VisualMemory({ onComplete, initialLevel = 1 }) {
         {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, index) => {
           const isPattern = grid.includes(index);
           const isSelected = selected.includes(index);
-
           let bgColor = "bg-gray-700";
           let borderColor = "";
           
