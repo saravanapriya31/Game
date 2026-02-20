@@ -22,7 +22,7 @@ function Signup() {
   const [userEmail, setUserEmail] = useState("");
   const [timer, setTimer] = useState(0);
 
-  // ✅ countdown timer
+  //  countdown timer
   useEffect(() => {
     if (timer <= 0) return;
     const interval = setInterval(() => {
@@ -31,44 +31,53 @@ function Signup() {
     return () => clearInterval(interval);
   }, [timer]);
 
-  // ✅ REGISTER
+  // ✅ STEP 1 — REGISTER (SEND OTP)
   const handleRegister = async (values) => {
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/auth/register/",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: values.email,
-            password: values.password,
-          }),
-        }
-      );
+    const email = values.email.toLowerCase();
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.detail || "Registration failed");
+    const response = await fetch(
+      "https://yeswanthm.pythonanywhere.com/api/auth/register/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: email, // ⭐ IMPORTANT
+          email: email,
+          password: values.password,
+        }),
       }
+    );
 
-      setUserEmail(values.email);
-      setStep(2);
-      setTimer(30);
+    const data = await response.json();
+    console.log("REGISTER RESPONSE:", data); // ⭐ DEBUG
 
-      message.success("OTP sent to your email 📩");
-    } catch (error) {
-      message.error(error.message || "Registration failed ❌");
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      throw new Error(
+        data?.detail ||
+        data?.message ||
+        JSON.stringify(data) ||
+        "Registration failed"
+      );
     }
-  };
 
-  // ✅ VERIFY OTP (YOUR REAL API)
+    setUserEmail(email);
+    setStep(2);
+    setTimer(30);
+
+    message.success("Verification code sent to your email");
+  } catch (error) {
+    message.error(error.message || "Registration failed ");
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // ✅ STEP 2 — VERIFY OTP
   const handleVerifyOtp = async (values) => {
     try {
       setLoading(true);
@@ -90,10 +99,10 @@ function Signup() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.detail || "Invalid OTP");
+        throw new Error(data?.detail || data?.message || "Invalid OTP");
       }
 
-      message.success("Email verified successfully ✅");
+      message.success("Email verified successfully 🎉");
       navigate("/login");
     } catch (error) {
       message.error(error.message || "OTP verification failed ❌");
@@ -102,7 +111,7 @@ function Signup() {
     }
   };
 
-  // ✅ RESEND OTP (YOUR REAL API)
+  // ✅ RESEND OTP
   const handleResendOtp = async () => {
     try {
       setLoading(true);
@@ -123,11 +132,11 @@ function Signup() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.detail || "Failed to resend OTP");
+        throw new Error(data?.detail || data?.message || "Resend failed");
       }
 
       setTimer(30);
-      message.success("OTP resent successfully 📩");
+      message.success("OTP resent successfully 🔁");
     } catch (error) {
       message.error(error.message || "Resend failed ❌");
     } finally {
@@ -149,7 +158,7 @@ function Signup() {
           }}
         >
           <Title level={3} style={{ textAlign: "center" }}>
-            {step === 1 ? "Create Account 🚀" : "Verify Email 🔐"}
+            {step === 1 ? "Create Account" : "Verify Email"}
           </Title>
 
           {/* ✅ STEP 1 — REGISTER */}
@@ -223,12 +232,9 @@ function Signup() {
                 Verify OTP
               </Button>
 
-              {/* ✅ RESEND */}
               <div style={{ textAlign: "center", marginTop: 16 }}>
                 {timer > 0 ? (
-                  <Text type="secondary">
-                    Resend OTP in {timer}s
-                  </Text>
+                  <Text type="secondary">Resend OTP in {timer}s</Text>
                 ) : (
                   <Button type="link" onClick={handleResendOtp}>
                     Resend OTP

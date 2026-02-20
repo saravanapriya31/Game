@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
 import VisualMemory from "../VisualMemory";
 
+
 const VideoPlayer = ({
   src = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
   autoPlay = false,

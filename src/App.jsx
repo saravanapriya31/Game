@@ -10,6 +10,8 @@ import Login from "./Components/authpages/Login.jsx";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import "antd/dist/reset.css";
 import Signup from "./Components/authpages/SignUp.jsx";
+import SequencePuzzle from "./Components/Game/SequencePuzzle.jsx"
+import Pattern from "./Components/Game/Pattern.jsx"
 
 function App() {
   return (
@@ -22,6 +24,8 @@ function App() {
         <Route path="/memory" element={<VisualMemory />} />
        <Route path="/login" element={<Login />} />
        <Route path="/signup" element={<Signup />} />
+       <Route path="/sequence" element={<SequencePuzzle />} />
+       <Route path="/pattern" element={<Pattern />} />
       <Route
           path="/video"
           element={
